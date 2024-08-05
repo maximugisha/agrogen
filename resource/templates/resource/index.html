@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<div class="tweet-form">
+    <form id="postForm">
+        <textarea id="postContent" placeholder="What's happening?"></textarea>
+        <div class="form-buttons">
+            <button title="Attach Image"><i class="fas fa-image"></i></button>
+            <select id="postCategory">
+                <option value="">Select Category</option>
+                {% for category in categories %}
+                    <option value="{{ category.pk }}">{{ category.name }}</option>
+                {% endfor %}
+            </select>
+            <select id="postAudience">
+                <option value="">Select Audience</option>
+                {% for audience in audiences %}
+                    <option value="{{ audience.pk }}">{{ audience.name }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" title="Tweet"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.getElementById('postForm').addEventListener('submit', function(event) {
+    event.preventDefault();  // Prevent form submission
+
+    var postContent = document.getElementById('postContent').value;
+    var audience = document.getElementById('postAudience').value;
+    var author = '{{ user_profile.user.pk }}';
+    
+
+    // Send AJAX request to create a new post
+    fetch('/diy/api/create_post/', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'  // Include CSRF token for security
+        },
+        body: JSON.stringify({ content: postContent, audience: audience, author: author })
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Handle successful response
+        console.log('Post created:', data);
+
+        // Clear the form
+        document.getElementById('postContent').value = '';
+        document.getElementById('postAudience').value = '';  // Clear the audience dropdown
+
+        // Add the new post to the page
+        var newPost = document.createElement('div');
+            newPost.classList.add('tweet');
+            newPost.innerHTML = `
+                <div class="user-info">
+                    <img src="{{ user_profile.profile_picture.url }}" alt="Profile Picture">
+                    <div class="details">
+                        <div class="username">{{ user_profile.user.first_name}}</div>
+                        <div class="handle">@{{ user_profile.user.username}}</div>
+                        <div class="timestamp">Just now</div>
+                        <div class="organization">{{ user_profile.organization }}</div>
+                    </div>
+                </div>
+                <div class="tweet-text">${postContent}</div>
+            `;
+            document.querySelector('.tweet-form').after(newPost);
+    })
+    .catch(error => {
+        // Handle error
+        console.error('Error creating post:', error);
+    });
+});
+    </script>
+
+
+
+{% for post in posts %}
+<div class="tweet">
+    <div class="user-info">
+        <img src="{{ user_profile.profile_picture.url }}" alt="Profile Picture">
+        <div class="details">
+            <div class="username">{{ post.author.first_name}}</div>
+            <div class="handle">@{{ post.author.username}}</div>
+            <div class="timestamp">5m ago</div>
+            <div class="organization">{{ user_profile.organization }}</div>
+        </div>
+    </div>
+    <div class="tweet-text">
+        {{post.content}}
+    </div>
+    {% if post.attachments %}
+                            <div class="tweet-images">
+                                {% for attachment in post.attachments.all %}
+                                    {% if forloop.counter <= 4 %}
+                                        {# Limit to maximum of 4 attachments for a 2 by 2 grid #}
+                                        {% if attachment.file_extension == '.mp4' %}
+                                            <!-- Video Player -->
+                                            <div class="attachment-item">
+                                                <video controls>
+                                                    <source src="{{ attachment.file.url }}" type="video/mp4">
+                                                    Your browser does not support the video tag.
+                                                </video>
+                                            </div>
+                                        {% else %}
+                                            <!-- Image -->
+                                            <div class="tweet-images">
+                                                <img src="{{ attachment.file.url }}" alt="img">
+                                            </div>
+                                        {% endif %}
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+</div>
+
+{% endfor %}
+
+{% endblock %}
