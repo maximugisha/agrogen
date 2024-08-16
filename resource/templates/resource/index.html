@@ -1,13 +1,17 @@
 {% extends 'base.html' %}
-
+{% load custom_filters %}
 {% block content %}
 
 <div class="tweet-form">
     <form id="postForm">
         <textarea id="postContent" placeholder="What's happening?"></textarea>
         <div class="form-buttons">
-            <button title="Attach Image"><i class="fas fa-image"></i></button>
-            <select id="postCategory">
+            <div class="form-group">
+                <label for="attachments">Attachments</label>
+                <input type="file" id="attachments" name="attachments" multiple accept="image/*">
+                <div id="attachmentPreviewContainer"></div>
+            </div>
+            <select id="postCategory" multiple>
                 <option value="">Select Category</option>
                 {% for category in categories %}
                     <option value="{{ category.pk }}">{{ category.name }}</option>
@@ -28,19 +32,29 @@
     document.getElementById('postForm').addEventListener('submit', function(event) {
     event.preventDefault();  // Prevent form submission
 
-    var postContent = document.getElementById('postContent').value;
-    var audience = document.getElementById('postAudience').value;
-    var author = '{{ user_profile.user.pk }}';
-    
+    var formData = new FormData();
+    formData.append('author', '{{ user_profile.user.pk }}');
+    formData.append('content', document.getElementById('postContent').value);
+    formData.append('audience', document.getElementById('postAudience').value);
+    var postCategories = Array.from(document.getElementById('postCategory').selectedOptions)
+        .map(option => parseInt(option.value));  // Convert string to integer
+    postCategories.forEach(category => {
+        formData.append('categories', category);
+    });
+
+    var attachments = document.getElementById('attachments').files;
+    for (var i = 0; i < attachments.length; i++) {
+        formData.append('attachments', attachments[i]);
+    }
 
     // Send AJAX request to create a new post
     fetch('/diy/api/create_post/', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json',
+            // 'Content-Type': 'application/json',
             'X-CSRFToken': '{{ csrf_token }}'  // Include CSRF token for security
         },
-        body: JSON.stringify({ content: postContent, audience: audience, author: author })
+        body: formData
     })
     .then(response => response.json())
     .then(data => {
@@ -50,30 +64,31 @@
         // Clear the form
         document.getElementById('postContent').value = '';
         document.getElementById('postAudience').value = '';  // Clear the audience dropdown
+        document.getElementById('postCategory').selectedIndex = 0;  // Clear the category dropdown
 
         // Add the new post to the page
         var newPost = document.createElement('div');
-            newPost.classList.add('tweet');
-            newPost.innerHTML = `
-                <div class="user-info">
-                    <img src="{{ user_profile.profile_picture.url }}" alt="Profile Picture">
-                    <div class="details">
-                        <div class="username">{{ user_profile.user.first_name}}</div>
-                        <div class="handle">@{{ user_profile.user.username}}</div>
-                        <div class="timestamp">Just now</div>
-                        <div class="organization">{{ user_profile.organization }}</div>
-                    </div>
+        newPost.classList.add('tweet');
+        newPost.innerHTML = `
+            <div class="user-info">
+                <img src="{{ user_profile.profile_picture.url }}" alt="Profile Picture">
+                <div class="details">
+                    <div class="username">{{ user_profile.user.first_name}}</div>
+                    <div class="handle">@{{ user_profile.user.username}}</div>
+                    <div class="timestamp">Just now</div>
+                    <div class="organization">{{ user_profile.organization }}</div>
                 </div>
-                <div class="tweet-text">${postContent}</div>
-            `;
-            document.querySelector('.tweet-form').after(newPost);
+            </div>
+            <div class="tweet-text">${postContent}</div>
+        `;
+        document.querySelector('.tweet-form').after(newPost);
     })
     .catch(error => {
         // Handle error
         console.error('Error creating post:', error);
     });
 });
-    </script>
+</script>
 
 
 
@@ -84,10 +99,18 @@
         <div class="details">
             <div class="username">{{ post.author.first_name}}</div>
             <div class="handle">@{{ post.author.username}}</div>
-            <div class="timestamp">5m ago</div>
+            <div class="timestamp" >{{ post.created_at|short_timesince }}</div>
+            <!-- <div class="timestamp">{{post.audience}}</div> -->
             <div class="organization">{{ user_profile.organization }}</div>
         </div>
     </div>
+    {% if post.categories %}
+    <div class="categories-container">
+        {% for category in post.categories.all %}
+            <button class="category-button">{{ category.name }}</button>
+        {% endfor %}
+    </div>
+    {% endif %}
     <div class="tweet-text">
         {{post.content}}
     </div>

@@ -10,6 +10,7 @@ from django.shortcuts import render, get_object_or_404
 from account.models import Organization, Profile, Interest
 from rest_framework import generics
 from .serializers import PostSerializer, AttachmentSerializer
+from rest_framework.parsers import MultiPartParser, FormParser
 
 def index(request):
     # Retrieve all posts from the database
@@ -198,6 +199,10 @@ def dislike_post(request, post_id):
 class CreatePostView(generics.CreateAPIView):
     queryset = Post.objects.all()
     serializer_class = PostSerializer
+    parser_classes = [MultiPartParser, FormParser]  # Enable handling of file uploads
+
+    def perform_create(self, serializer):
+        serializer.save(author=self.request.user)
 
 
 class CreateAttachmentView(generics.CreateAPIView):
