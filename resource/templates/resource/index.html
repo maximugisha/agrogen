@@ -36,9 +36,9 @@
     formData.append('author', '{{ user_profile.user.pk }}');
     formData.append('content', document.getElementById('postContent').value);
     formData.append('audience', document.getElementById('postAudience').value);
-    var postCategories = Array.from(document.getElementById('postCategory').selectedOptions)
+    var postCategory = Array.from(document.getElementById('postCategory').selectedOptions)
         .map(option => parseInt(option.value));  // Convert string to integer
-    postCategories.forEach(category => {
+    postCategory.forEach(category => {
         formData.append('categories', category);
     });
 
@@ -63,6 +63,7 @@
 
         // Clear the form
         document.getElementById('postContent').value = '';
+        document.getElementById('attachments').value = '';
         document.getElementById('postAudience').value = '';  // Clear the audience dropdown
         document.getElementById('postCategory').selectedIndex = 0;  // Clear the category dropdown
 

@@ -31,3 +31,15 @@ class PostSerializer(serializers.ModelSerializer):
             post.attachments.add(attachment)
 
         return post
+    
+    def to_representation(self, instance):
+        """Custom representation to return related fields properly."""
+        representation = super().to_representation(instance)
+
+        # Replace the write-only attachments field with a proper serialized output
+        representation['attachments'] = AttachmentSerializer(instance.attachments.all(), many=True).data
+
+        # Replace categories with their actual data
+        representation['categories'] = [category.pk for category in instance.categories.all()]
+
+        return representation
